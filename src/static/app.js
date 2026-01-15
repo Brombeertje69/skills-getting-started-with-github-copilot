@@ -20,20 +20,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Create participants list HTML
+        // Create participants list HTML with delete icon
         let participantsHTML = "";
         if (details.participants.length > 0) {
           participantsHTML = `
             <div class="participants-section">
               <strong>Participants:</strong>
-              <ul class="participants-list">
+              <div class="participants-list">
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-badge">${email.split("@")[0]}</span></li>`
+                      `<span class="participant-badge">${email.split("@")[0]}
+                        <span class="delete-icon" title="Remove participant" data-activity="${name}" data-email="${email}">&#10006;</span>
+                      </span>`
                   )
                   .join("")}
-              </ul>
+              </div>
             </div>
           `;
         } else {
@@ -104,4 +106,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   fetchActivities();
+  // Handle participant delete (unregister)
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("delete-icon")) {
+      const activity = event.target.getAttribute("data-activity");
+      const email = event.target.getAttribute("data-email");
+      if (confirm(`Remove ${email} from ${activity}?`)) {
+        try {
+          const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+            method: "POST"
+          });
+          if (response.ok) {
+            messageDiv.textContent = `Unregistered ${email} from ${activity}`;
+            messageDiv.className = "message success";
+            fetchActivities();
+          } else {
+            const data = await response.json();
+            messageDiv.textContent = data.detail || "Failed to unregister.";
+            messageDiv.className = "message error";
+          }
+        } catch (error) {
+          messageDiv.textContent = "Error unregistering participant.";
+          messageDiv.className = "message error";
+        }
+      }
+    }
+  });
 });
